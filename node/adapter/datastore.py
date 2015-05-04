@@ -1,7 +1,9 @@
 from collections import namedtuple
-import json
-import etcd
 from etcd import EtcdKeyNotFound
+import json
+import zketcdbridge as etcd
+#import etcd
+# from etcd import EtcdKeyNotFound
 from netaddr import IPNetwork, IPAddress, AddrFormatError
 import os
 import copy
@@ -201,8 +203,10 @@ class DatastoreClient(object):
 
     def __init__(self):
         etcd_authority = os.getenv(ETCD_AUTHORITY_ENV, ETCD_AUTHORITY_DEFAULT)
+
         (host, port) = etcd_authority.split(":", 1)
         self.etcd_client = etcd.Client(host=host, port=int(port))
+
 
     def ensure_global_config(self):
         """
@@ -604,7 +608,7 @@ d
             ep = Endpoint.from_json(endpoint_id, ep_json)
             return ep
         except EtcdKeyNotFound:
-            raise KeyError("Enpoint %s not found" % ep_path)
+            raise KeyError("Endpoint %s not found" % ep_path)
 
     def set_endpoint(self, hostname, container_id, endpoint):
         """
