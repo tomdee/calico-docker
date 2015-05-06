@@ -2,8 +2,6 @@ from collections import namedtuple
 from etcd import EtcdKeyNotFound
 import json
 import zketcdbridge as etcd
-#import etcd
-# from etcd import EtcdKeyNotFound
 from netaddr import IPNetwork, IPAddress, AddrFormatError
 import os
 import copy
@@ -335,7 +333,7 @@ class DatastoreClient(object):
         """
 
         try:
-            nodes = self.etcd_client.read(path).children
+            nodes = self.etcd_client.read(path).leaves
         except EtcdKeyNotFound:
             # Path doesn't exist.
             return {}
@@ -447,7 +445,7 @@ d
         profiles = set()
         try:
             etcd_profiles = self.etcd_client.read(PROFILES_PATH,
-                                                  recursive=True).children
+                                                  recursive=True).leaves
             for child in etcd_profiles:
                 packed = child.key.split("/")
                 if len(packed) > 5:
