@@ -904,7 +904,7 @@ def container_ip_add(container_name, ip, version, interface):
 
     try:
         container_pid = info["State"]["Pid"]
-        netns.add_ip_to_interface(container_pid,
+        netns.add_ip_to_container_interface(container_pid,
                                   address,
                                   interface,
                                   proc_alias="/proc")
@@ -976,7 +976,7 @@ def container_ip_remove(container_name, ip, version, interface):
 
     try:
         container_pid = info["State"]["Pid"]
-        netns.remove_ip_from_interface(container_pid,
+        netns.remove_ip_from_container_interface(container_pid,
                                        address,
                                        interface,
                                        proc_alias="/proc")

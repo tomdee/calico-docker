@@ -19,7 +19,6 @@ import logging
 import logging.handlers
 import sys
 import uuid
-import os.path
 
 from netaddr import IPNetwork, IPAddress
 from pyroute2.iproute import IPRoute
@@ -72,10 +71,16 @@ def remove_endpoint(ep_id):
     :return: Nothing
     """
     iface = IF_PREFIX + ep_id[:11]
-    call("ip link delete %s" % iface, shell=True)
+
+    # TODO - error handling. Link lookup could fail. So could the delete.
+    # TODO logging.
+    ipr = IPRoute()
+    dev = ipr.link_lookup(ifname=iface)[0]
+    ipr.link_remove(dev)
+    ipr.close()
 
 
-def add_ip_to_interface(container_pid, ip, interface_name,
+def add_ip_to_container_interface(container_pid, ip, interface_name,
                     proc_alias=PROC_ALIAS):
     """
     Add an IP to an interface in a container.
@@ -86,16 +91,7 @@ def add_ip_to_interface(container_pid, ip, interface_name,
     :param proc_alias: The head of the /proc filesystem on the host.
     :return: None. raises CalledProcessError on error.
     """
-
-
     with Namespace(container_pid, 'net', proc=proc_alias):
-        # check_call("ip -%(version)s addr add "
-        #            "%(addr)s/%(len)s dev %(device)s" %
-        #            {"version": ip.version,
-        #             "len": PREFIX_LEN[ip.version],
-        #             "addr": ip,
-        #             "device": interface_name},
-        #            shell=True)
         ipr = IPRoute()
         dev = ipr.link_lookup(ifname=interface_name)[0]
         if ip.version == 4:
@@ -111,7 +107,7 @@ def add_ip_to_interface(container_pid, ip, interface_name,
         ipr.close()
 
 
-def remove_ip_from_interface(container_pid, ip, interface_name,
+def remove_ip_from_container_interface(container_pid, ip, interface_name,
                     proc_alias=PROC_ALIAS):
     """
     Remove an IP from an interface in a container.
@@ -123,13 +119,28 @@ def remove_ip_from_interface(container_pid, ip, interface_name,
     :return: None. raises CalledProcessError on error.
     """
     with Namespace(container_pid, 'net', proc=proc_alias):
-        check_call("ip -%(version)s addr del "
-                   "%(addr)s/%(len)s dev %(device)s" %
-                   {"version": ip.version,
-                    "len": PREFIX_LEN[ip.version],
-                    "addr": ip,
-                    "device": interface_name},
-                   shell=True)
+        ipr = IPRoute()
+        dev = ipr.link_lookup(ifname=interface_name)[0]
+
+        if ip.version == 4:
+            family = socket.AF_INET
+        else:
+            family = socket.AF_INET6
+
+        ipr.addr('delete',
+                 dev,
+                 address=str(ip),
+                 mask=PREFIX_LEN[ip.version],
+                 family=family)
+        ipr.close()
+
+
+def create_veth_pair(iface, iface_tmp):
+    ipr = IPRoute()
+    ipr.link_create(ifname=iface, peer=iface_tmp, kind='veth')
+    dev = ipr.link_lookup(ifname=iface)[0]
+    ipr.link_up(dev)
+    ipr.close()
 
 
 def set_up_endpoint(ip, cpid, next_hop_ips,
@@ -158,6 +169,8 @@ def set_up_endpoint(ip, cpid, next_hop_ips,
     iface = IF_PREFIX + ep_id[:11]
     iface_tmp = "tmp" + ep_id[:11]
 
+    create_veth_pair(iface, iface_tmp)
+
     # Provision the networking.  We create a temporary link from the proc
     # alias to the /var/run/netns to provide a named namespace.  If we don't
     # do this, when run from the calico-node container the PID of the
@@ -173,15 +186,8 @@ def set_up_endpoint(ip, cpid, next_hop_ips,
                      (proc_alias, cpid, cpid),
                    shell=True)
         _log.debug(check_output("ls -l /var/run/netns", shell=True))
-
-        # Create the veth pair and move one end into container:
-        check_call("ip link add %s type veth peer name %s" %
-                     (iface, iface_tmp),
-                   shell=True)
-        check_call("ip link set %s up" % iface, shell=True)
         check_call("ip link set %s netns pid-%s" % (iface_tmp, cpid),
                    shell=True)
-        _log.debug(check_output("ip link", shell=True))
     finally:
         check_call("rm /var/run/netns/pid-%s" % cpid, shell=True)
 
@@ -192,7 +198,7 @@ def set_up_endpoint(ip, cpid, next_hop_ips,
         check_call("ip link set %s up" % (veth_name), shell=True)
 
     # Add an IP address.
-    add_ip_to_interface(cpid, ip, veth_name, proc_alias=proc_alias)
+    add_ip_to_container_interface(cpid, ip, veth_name, proc_alias=proc_alias)
 
     # Connected route to next hop & default route.
     next_hop = next_hop_ips[ip.version]
