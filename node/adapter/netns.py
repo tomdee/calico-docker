@@ -22,10 +22,10 @@ import uuid
 import os.path
 
 from netaddr import IPNetwork, IPAddress
+from pyroute2.iproute import IPRoute
 
 from datastore import Endpoint, IF_PREFIX
 from nsenter import Namespace
-
 
 _log = logging.getLogger(__name__)
 
@@ -86,14 +86,30 @@ def add_ip_to_interface(container_pid, ip, interface_name,
     :param proc_alias: The head of the /proc filesystem on the host.
     :return: None. raises CalledProcessError on error.
     """
+
+
     with Namespace(container_pid, 'net', proc=proc_alias):
-        check_call("ip -%(version)s addr add "
-                   "%(addr)s/%(len)s dev %(device)s" %
-                   {"version": ip.version,
-                    "len": PREFIX_LEN[ip.version],
-                    "addr": ip,
-                    "device": interface_name},
-                   shell=True)
+        # check_call("ip -%(version)s addr add "
+        #            "%(addr)s/%(len)s dev %(device)s" %
+        #            {"version": ip.version,
+        #             "len": PREFIX_LEN[ip.version],
+        #             "addr": ip,
+        #             "device": interface_name},
+        #            shell=True)
+        ipr = IPRoute()
+        dev = ipr.link_lookup(ifname=interface_name)[0]
+        if ip.version == 4:
+            family = socket.AF_INET
+        else:
+            family = socket.AF_INET6
+
+        ipr.addr('add',
+                 dev,
+                 address=str(ip),
+                 mask=PREFIX_LEN[ip.version],
+                 family=family)
+        ipr.close()
+
 
 def remove_ip_from_interface(container_pid, ip, interface_name,
                     proc_alias=PROC_ALIAS):
