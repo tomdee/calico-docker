@@ -12,6 +12,8 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
+import os
+from os.path import join
 
 from subprocess import call, check_output, check_call, CalledProcessError
 import socket
@@ -26,10 +28,12 @@ from pyroute2.iproute import IPRoute
 from datastore import Endpoint, IF_PREFIX
 from nsenter import Namespace
 
+from os import makedirs, symlink, remove
+
 _log = logging.getLogger(__name__)
 
 HOSTNAME = socket.gethostname()
-
+NETNS_DIR = '/var/run/netns'
 VETH_NAME = "eth1"
 """The name to give to the veth in the target container's namespace. Default
 to eth1 because eth0 could be in use"""
@@ -170,6 +174,7 @@ def set_up_endpoint(ip, cpid, next_hop_ips,
     iface_tmp = "tmp" + ep_id[:11]
 
     create_veth_pair(iface, iface_tmp)
+    ipr = IPRoute()
 
     # Provision the networking.  We create a temporary link from the proc
     # alias to the /var/run/netns to provide a named namespace.  If we don't
@@ -181,45 +186,51 @@ def set_up_endpoint(ip, cpid, next_hop_ips,
     # TODO: Something similar to Namespace() to arbitrarily specify the proc
     # ...   alias for the ip link set command.
     try:
-        check_call("mkdir -p /var/run/netns", shell=True)
-        check_call("ln -s %s/%s/ns/net /var/run/netns/pid-%s" %
-                     (proc_alias, cpid, cpid),
-                   shell=True)
-        _log.debug(check_output("ls -l /var/run/netns", shell=True))
-        check_call("ip link set %s netns pid-%s" % (iface_tmp, cpid),
-                   shell=True)
+        # We need to create the named NS ourselves because we might be
+        # running in a container that doesn't have proc in the right place.
+        if not os.path.exists(NETNS_DIR):
+            makedirs(NETNS_DIR)
+        namespace_name = "pid-%s" % cpid
+        symlink(join(proc_alias, str(cpid), "ns", "net"),
+                join(NETNS_DIR, namespace_name))
+
+        dev = ipr.link_lookup(ifname=iface_tmp)[0]
+        ipr.link('set', index=dev, net_ns_fd=namespace_name)
+
+        # Rename within the container to something sensible.
+        with Namespace(cpid, 'net', proc=proc_alias):
+            check_call("ip link set dev %s name %s" % (iface_tmp,veth_name),
+                       shell=True)
+            check_call("ip link set %s up" % (veth_name), shell=True)
+
+        # Add an IP address.
+        add_ip_to_container_interface(cpid, ip, veth_name, proc_alias=proc_alias)
+
+        # Connected route to next hop & default route.
+        next_hop = next_hop_ips[ip.version]
+        with Namespace(cpid, 'net', proc=proc_alias):
+            check_call("ip -%(version)s route replace"
+                       " %(next_hop)s dev %(device)s" %
+                       {"version": ip.version,
+                        "device": veth_name,
+                        "next_hop": next_hop},
+                       shell=True)
+            check_call("ip -%(version)s route replace"
+                       " default via %(next_hop)s dev %(device)s" %
+                       {"version": ip.version,
+                        "device": veth_name,
+                        "next_hop": next_hop},
+                       shell=True)
+
+            # Get the MAC address. TODO - talk to SJC and come back to this.
+            mac = check_output(
+                "ip link show %s | grep ether | awk '{print $2}'" %
+                (veth_name), shell=True).strip()
     finally:
-        check_call("rm /var/run/netns/pid-%s" % cpid, shell=True)
-
-    # Rename within the container to something sensible.
-    with Namespace(cpid, 'net', proc=proc_alias):
-        check_call("ip link set dev %s name %s" % (iface_tmp,veth_name),
-                   shell=True)
-        check_call("ip link set %s up" % (veth_name), shell=True)
-
-    # Add an IP address.
-    add_ip_to_container_interface(cpid, ip, veth_name, proc_alias=proc_alias)
-
-    # Connected route to next hop & default route.
-    next_hop = next_hop_ips[ip.version]
-    with Namespace(cpid, 'net', proc=proc_alias):
-        check_call("ip -%(version)s route replace"
-                   " %(next_hop)s dev %(device)s" %
-                   {"version": ip.version,
-                    "device": veth_name,
-                    "next_hop": next_hop},
-                   shell=True)
-        check_call("ip -%(version)s route replace"
-                   " default via %(next_hop)s dev %(device)s" %
-                   {"version": ip.version,
-                    "device": veth_name,
-                    "next_hop": next_hop},
-                   shell=True)
-
-        # Get the MAC address.
-        mac = check_output(
-            "ip link show %s | grep ether | awk '{print $2}'" %
-            (veth_name), shell=True).strip()
+        try:
+            remove(join(NETNS_DIR, namespace_name))
+        except OSError as e:
+            _log.warn(e)
 
     # Return an Endpoint
     network = IPNetwork(IPAddress(ip))
@@ -230,4 +241,6 @@ def set_up_endpoint(ip, cpid, next_hop_ips,
     else:
         ep.ipv6_nets.add(network)
         ep.ipv6_gateway = next_hop
+
+    ipr.close()
     return ep
