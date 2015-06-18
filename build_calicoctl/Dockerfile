@@ -15,25 +15,31 @@
 # This image is based on the "main" calico/node image. It shares many of the
 # dependencies which makes it a good base for an image used for building and
 # unit testing
-FROM ubuntu:14.04
+FROM gliderlabs/alpine:latest
 
 WORKDIR /code/
 
-RUN apt-get update && \
-    apt-get install -qy curl python-dev python-pip git libffi-dev libssl-dev
+RUN apk update
+RUN apk add bash
 
 # Make an etcd available as some UTs rely on it.
+RUN apk add curl
 RUN curl -L  https://www.github.com/coreos/etcd/releases/download/v2.0.10/etcd-v2.0.10-linux-amd64.tar.gz -o /tmp/etcd.tar.gz
-RUN tar -zxvf /tmp/etcd.tar.gz -C /tmp --strip-components=1
+RUN tar -zxvf /tmp/etcd.tar.gz -C /tmp
+RUN mv /tmp/etcd-v2.0.10-linux-amd64/etcd /tmp
 
 # Install the python packages needed for running UTs and building calicoctl.
 # Git is installed to allow pip installation from a github repo and also so
 # that the right branch can be included if uploading coverage.
+RUN apk add python-dev py-pip alpine-sdk
 ADD requirements.txt /code/
+RUN pip install --upgrade pip
 RUN pip install -r requirements.txt
+
 RUN pip install git+https://github.com/Metaswitch/python-etcd.git
+RUN pip install netaddr
 
 # Can't run pyinstaller as root so add a user - https://github.com/pyinstaller/pyinstaller/issues/1081
-RUN useradd -d /home/user -m -s /bin/bash user
+RUN adduser -h /home/user -D -s /bin/bash user
 RUN chown -R user:user /code/
 USER user
