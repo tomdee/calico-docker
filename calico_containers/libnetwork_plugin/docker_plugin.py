@@ -167,6 +167,7 @@ def create_endpoint():
 
 @app.route('/NetworkDriver.DeleteEndpoint', methods=['POST'])
 def delete_endpoint():
+    # TODO - does this need to check that it's only done once?
     json_data = request.get_json(force=True)
     app.logger.debug("DeleteEndpoint JSON=%s", json_data)
     ep_id = json_data["EndpointID"]
