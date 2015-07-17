@@ -15,7 +15,7 @@ from etcd import EtcdResult
 import json
 import unittest
 
-from mock import patch, Mock, call
+from mock import patch, Mock, ANY
 from netaddr import IPAddress, IPNetwork
 from nose.tools import assert_equal, assert_dict_equal
 
@@ -52,30 +52,28 @@ class TestPlugin(unittest.TestCase):
         docker_plugin.client.create_profile.assert_called_once_with(TEST_NETWORK_ID)
         assert_equal(rv.data, '{}')
 
-    @patch("libnetwork_plugin.docker_plugin.client.profile_exists", autospec=True, return_value=True)
     @patch("libnetwork_plugin.docker_plugin.client.remove_profile", autospec=True)
-    def test_delete_network(self, m_remove, m_exists):
+    def test_delete_network(self, m_remove):
         """
         Test the delete_network hook correctly removes the etcd data and
         returns the correct response.
         """
         rv = self.app.post('/NetworkDriver.DeleteNetwork',
                            data='{"NetworkID": "%s"}' % TEST_NETWORK_ID)
-        m_exists.assert_called_once_with(TEST_NETWORK_ID)
         m_remove.assert_called_once_with(TEST_NETWORK_ID)
         assert_equal(rv.data, '{}')
 
-    @patch("libnetwork_plugin.docker_plugin.client.profile_exists", autospec=True, return_value=False)
     @patch("libnetwork_plugin.docker_plugin.client.remove_profile", autospec=True)
-    def test_delete_network_no_profile(self, m_remove, m_exists):
+    def test_delete_network_no_profile(self, m_remove):
         """
         Test the delete_network hook correctly removes the etcd data and
         returns the correct response.
         """
+        m_remove.side_effect = KeyError
         rv = self.app.post('/NetworkDriver.DeleteNetwork',
                            data='{"NetworkID": "%s"}' % TEST_NETWORK_ID)
-        m_exists.assert_called_once_with(TEST_NETWORK_ID)
-        assert_equal(m_remove.call_count, 0)
+        m_remove.assert_called_once_with(TEST_NETWORK_ID)
+        assert_equal(rv.data, '{}')
 
     def test_oper_info(self):
         rv = self.app.post('/NetworkDriver.EndpointOperInfo',
@@ -87,24 +85,16 @@ class TestPlugin(unittest.TestCase):
     @patch("libnetwork_plugin.docker_plugin.create_veth", autospec=True)
     @patch("libnetwork_plugin.docker_plugin.client.set_endpoint", autospec=True)
     def test_join(self, m_set, m_veth, m_read, m_next_hops):
-        endpoint_json = """
-            {"Interfaces": [{"Address": "1.2.3.4",
-                            "ID": 0,
-                            "MacAddress": "EE:EE:EE:EE:EE:EE"}]}"""
+        endpoint_json = {"Interfaces":
+                          [
+                            {"Address": "1.2.3.4",
+                             "AddressIPv6": "FE80::0202:B3FF:FE1E:8329",
+                             "ID": 0,
+                             "MacAddress": "EE:EE:EE:EE:EE:EE"}
+                          ]
+                        }
         m_read.return_value = endpoint_json
-        #endpoint = Endpoint("hostname",
-        #                    "docker",
-        #                    "undefined",
-        #                    TEST_ENDPOINT_ID,
-        #                    "active",
-        #                    "mac")
-        #endpoint.ipv4_gateway = IPAddress("1.2.3.4")
-        #endpoint.ipv6_gateway = IPAddress("FE80::0202:B3FF:FE1E:8329")
-        #endpoint.ipv4_nets.add(IPNetwork("1.2.3.4/24"))
-        #endpoint.ipv6_nets.add(IPNetwork("FE80::0202:B3FF:FE1E:8329/128"))
-        # endpoint_mock.return_value = endpoint
 
-        #assert that it's always called with hostname'
         m_next_hops.return_value = {4: IPAddress("1.2.3.4"),
                                     6: IPAddress("fe80::202:b3ff:fe1e:8329")}
 
@@ -114,10 +104,22 @@ class TestPlugin(unittest.TestCase):
                                 (TEST_ENDPOINT_ID, TEST_NETWORK_ID))
         m_read.assert_called_once_with(TEST_ENDPOINT_ID)
 
-        # set_endpoint_mock.assert_called_once_with(endpoint)
+        # Check that the create_veth and set_endpoint are called with this
+        # endpoint.
+        endpoint = Endpoint("hostname",
+                            "docker",
+                            "libnetwork",
+                            TEST_ENDPOINT_ID,
+                            "active",
+                            "EE:EE:EE:EE:EE:EE")
+        endpoint.ipv4_gateway = IPAddress("1.2.3.4")
+        endpoint.ipv6_gateway = IPAddress("FE80::0202:B3FF:FE1E:8329")
+        endpoint.ipv4_nets.add(IPNetwork("1.2.3.4/32"))
+        endpoint.ipv6_nets.add(IPNetwork("FE80::0202:B3FF:FE1E:8329/128"))
+        endpoint.profile_ids.append(TEST_NETWORK_ID)
 
-        # Assert that create_veth mock was called with ep
-        # docker_plugin.create_veth.assert_called_once_with(endpoint)
+        m_veth.assert_called_once_with(endpoint)
+        m_set.assert_called_once_with(endpoint)
 
         expected_response = """{
   "Gateway": "1.2.3.4",
@@ -125,7 +127,7 @@ class TestPlugin(unittest.TestCase):
   "InterfaceNames": [
     {
       "DstPrefix": "cali",
-      "SrcName": "tmpTEST_ID"
+      "SrcName": "tmpTEST_ENDPOI"
     }
   ],
   "StaticRoutes": [
@@ -143,31 +145,34 @@ class TestPlugin(unittest.TestCase):
     }
   ]
 }"""
-        expected_response = """{
-  "Gateway": "1.2.3.4",
-  "InterfaceNames": [
-    {
-      "DstPrefix": "cali",
-      "SrcName": "tmpTEST_ENDPOI"
-    }
-  ],
-  "StaticRoutes": [
-    {
-      "Destination": "1.2.3.4/32",
-      "InterfaceID": 0,
-      "NextHop": "",
-      "RouteType": 1
-    }
-  ]
-}"""
         self.maxDiff=None
-        assert_dict_equal(json.loads(rv.data),
-                          json.loads(expected_response))
+        self.assertDictEqual(json.loads(rv.data),
+                             json.loads(expected_response))
 
-    def test_leave(self):
+    @patch("libnetwork_plugin.docker_plugin.remove_veth", autospec=True)
+    @patch("libnetwork_plugin.docker_plugin.client.get_endpoint", autospec=True)
+    @patch("libnetwork_plugin.docker_plugin.client.remove_endpoint", autospec=True)
+    def test_leave(self, m_remove, m_get, m_veth):
+        endpoint = Endpoint("hostname",
+                            "docker",
+                            "libnetwork",
+                            TEST_ENDPOINT_ID,
+                            "active",
+                            "EE:EE:EE:EE:EE:EE")
+        m_get.return_value = endpoint
+
+        # Send the leave request.
         rv = self.app.post('/NetworkDriver.Leave',
                            data='{"EndpointID": "%s"}' % TEST_ENDPOINT_ID)
         assert_equal(rv.data, '{}')
+
+        # Check parameters
+        m_get.assert_called_once_with(hostname=ANY,
+                                      orchestrator_id="docker",
+                                      workload_id="libnetwork",
+                                      endpoint_id=TEST_ENDPOINT_ID)
+        m_remove.assert_called_once_with(endpoint)
+        m_veth.assert_called_once_with(endpoint)
 
     def test_delete_endpoint(self):
         rv = self.app.post('/NetworkDriver.DeleteEndpoint',
@@ -268,7 +273,7 @@ class TestPlugin(unittest.TestCase):
         # Assert no data is written and returns 500 response.
         assert_equal(m_write.call_count, 0)
 
-        expected_data = {"message": "500: Internal Server Error"}
+        expected_data = {"Err": "500: Internal Server Error"}
         assert_dict_equal(json.loads(rv.data),
                           expected_data)
 

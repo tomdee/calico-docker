@@ -217,6 +217,8 @@ def join():
                   FIXED_MAC)
     ep.profile_ids.append(net_id)
 
+    #TODO - this assumes there are still IPv6 gateways configured (could
+    # have been deleted in the interim)
     address_ip4 = cnm_ep['Interfaces'][0].get('Address')
     if address_ip4:
         ep.ipv4_nets.add(IPNetwork(address_ip4))
