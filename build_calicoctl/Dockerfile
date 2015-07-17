@@ -36,8 +36,12 @@ ADD requirements.txt /code/
 RUN pip install --upgrade pip
 RUN pip install -r requirements.txt
 
+RUN apk add libffi-dev openssl-dev
 RUN pip install git+https://github.com/Metaswitch/python-etcd.git
 RUN pip install netaddr
+
+RUN ln -s /lib/ld-musl-x86_64.so.1 /bin/ldd
+RUN ln -s /lib/libc.musl-x86_64.so.1 /usr/lib/libc.musl-x86_64.so.1
 
 # Can't run pyinstaller as root so add a user - https://github.com/pyinstaller/pyinstaller/issues/1081
 RUN adduser -h /home/user -D -s /bin/bash user
