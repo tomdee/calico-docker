@@ -153,7 +153,7 @@ def create_endpoint():
     # Create the JSON to return to libnetwork
     response = {"Interfaces":
                     [{"ID": 0,
-                     "MacAddress": FIXED_MAC}]}
+                 "MacAddress": FIXED_MAC}]}
     if ip:
         response["Interfaces"][0]["Address"] = str(ip)
     if ip6:
