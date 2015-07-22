@@ -9,6 +9,6 @@ curl -L https://www.github.com/kelseyhightower/confd/releases/download/v0.9.0/co
 chmod +x confd
 
 pip install git+https://github.com/Metaswitch/python-etcd.git
-pip install git+https://github.com/Metaswitch/calico.git@0.27
+pip install git+https://github.com/tomdee/calico.git
 
 # BIRD
