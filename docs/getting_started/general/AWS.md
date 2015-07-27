@@ -111,7 +111,7 @@ Run the following commands to SSH into each node and set up Calico:
 ssh -i mykey.pem core@<instance IP>
 
 # Download calicoctl and make it executable:
-If you want to test with Powerstrip, you'll need to stick with v0.4.8, pther wise use the latest release (currently v0.5.3)
+If you want to test with Powerstrip, you'll need to stick with v0.4.8, otherwise use the latest release (currently v0.5.3)
 
 Powerstrip
 
