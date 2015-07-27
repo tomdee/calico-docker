@@ -1,7 +1,4 @@
-TODO - Where (and how) best to link to troubleshooting... If you have difficulty, try the [Troubleshooting Guide](./Troubleshooting.md).
 # Calico
-TODO - intro...
-TODO video e.g. [![asciicast](https://asciinema.org/a/14.png)](https://asciinema.org/a/14?autoplay=1)
 
 ## Environment
 This demonstration makes some assumptions about the environment you have. See [EnvironmentSetup](EnvironmentSetup.md) for instructions on getting an appropriate environment.
@@ -36,36 +33,84 @@ You should see output like this on each node
     39de206f7499        calico/node:v0.5.2   "/sbin/my_init"        2 minutes ago       Up 2 minutes                                                         calico-node
     5e36a7c6b7f0        quay.io/coreos/etcd  "/etcd --name calico   30 minutes ago      Up 30 minutes       0.0.0.0:4001->4001/tcp, 0.0.0.0:7001->7001/tcp   quay.io-coreos-etcd
 
-## Networking containers.
-TODO - intro about what is actually going to be shown here. How powerstrip is a proxy etc...
+## Routing via Powerstrip
 
-### Starting containers
-Let's go ahead and start a few of containers on each host.
+To allow Calico to set up networking automatically during container creation, Docker API calls need to be routed through the `Powerstrip` proxy which is running on port `2377` on each node. The easiest way to do this is to set the environment before running docker commands.  
 
-TODO -e CALICO_IP etc...
+On both hosts run
 
-On calico-01
+    export DOCKER_HOST=localhost:2377
 
-    docker run --name workload-A -tid busybox
-    docker run --name workload-B -tid busybox
-    docker run --name workload-C -tid busybox
+(Note - this export will only persist for your current SSH session)
 
-On calico-02
+Later, once you have guest containers and you want to attach to them or to execute a specific command in them, you'll probably need to skip the Powerstrip proxying, such that the `docker attach` or `docker exec` command speaks directly to the Docker daemon; otherwise standard input and output don't flow cleanly to and from the container. To do that, just prefix the individual relevant command with `DOCKER_HOST=localhost:2375`.
 
-    docker run --name workload-D -tid busybox
-    docker run --name workload-E -tid busybox
+For example, `docker attach` commands should be:
 
+    DOCKER_HOST=localhost:2375 docker attach node1
 
-### Testing it
-A, C and E are all in the same profile so should be able to ping each other.  B and D are in their own profile so shouldn't be able to ping anyone else.
+Also, when attaching, remember to hit Enter a few times to get a prompt to use `Ctrl-P,Q` rather than `exit` to back out of a container but still leave it running.
+
+## Creating networked endpoints
+
+Now you can start any other containers that you want within the cluster, using normal docker commands. To get Calico to network them, simply add `-e CALICO_IP=<IP address>` to specify the IP address that you want that container to have.
+
+(By default containers need to be assigned IPs in the `192.168.0.0/16` range. Use `calicoctl` commands to set up different ranges if desired)
+
+So let's go ahead and start a few of containers on each host.
+
+On core-01
+
+    docker run -e CALICO_IP=192.168.1.1 --name workload-A -tid busybox
+    docker run -e CALICO_IP=192.168.1.2 --name workload-B -tid busybox
+    docker run -e CALICO_IP=192.168.1.3 --name workload-C -tid busybox
+
+On core-02
+
+    docker run -e CALICO_IP=192.168.1.4 --name workload-D -tid busybox
+    docker run -e CALICO_IP=192.168.1.5 --name workload-E -tid busybox
+
+At this point, the containers have not been added to any policy profiles so they won't be able to communicate with any other containers.
+
+Create some profiles (this can be done on either host)
+
+    calicoctl profile add PROF_A_C_E
+    calicoctl profile add PROF_B
+    calicoctl profile add PROF_D
+
+When each container is added to calico, an "endpoint" is registered for each container's interface. Containers are only allowed to communicate with one another when both of their endpoints are assigned the same profile. To assign a profile to an endpoint, we will first get the endpoint's ID with `calicoctl container <CONTAINER> endpoint-id show`, then paste it into the `calicoctl endpoint <ENDPOINT_ID> profile append [<PROFILES>]`  command.
+
+On core-01:
+
     
-On calico-01 check that A can ping C and E.
+    calicoctl endpoint $(calicoctl container workload-A endpoint-id show) profile append PROF_A_C_E
+    calicoctl endpoint $(calicoctl container workload-B endpoint-id show) profile append PROF_B
+    calicoctl endpoint $(calicoctl container workload-C endpoint-id show) profile append PROF_A_C_E
 
-    docker exec workload-A ping -c 4 TODO
-    docker exec workload-A ping -c 4 TODO
+On core-02:
 
-Also check that A cannot ping B or D
+    calicoctl endpoint $(calicoctl container workload-D endpoint-id show) profile append PROF_D
+    calicoctl endpoint $(calicoctl container workload-E endpoint-id show) profile append PROF_A_C_E
 
-    docker exec workload-A ping -c 4 TODO
-    docker exec workload-A ping -c 4 TODO
+*Note that creating a new profile with `calicoctl profile add` will work on any Calico node, but assigning an endpoint a profile with `calicoctl endpoint <ENDPOINT_ID> profile append` will only work on the Calico node where the container is hosted.*
 
+Now, check that A can ping C (192.168.1.3) and E (192.168.1.5):
+
+    docker exec workload-A ping -c 4 192.168.1.3
+    docker exec workload-A ping -c 4 192.168.1.5
+
+Also check that A cannot ping B (192.168.1.2) or D (192.168.1.4):
+
+    docker exec workload-A ping -c 4 192.168.1.2
+    docker exec workload-A ping -c 4 192.168.1.4
+
+By default, profiles are configured so that their members can communicate with one another, but workloads in other profiles cannot reach them.  B and D are in their own profiles so shouldn't be able to ping anyone else.
+
+## Streamlining Container Creation
+
+In addition to the step by step approach above you can have Calico assign IP addresses automatically using `CALICO_IP=auto` and specify the profile at creation time using `CALICO_PROFILE=<profile name>`.  (The profile will be created automatically if it does not already exist.)
+
+On core-01
+
+    docker run -e CALICO_IP=auto -e CALICO_PROFILE=PROF_A_C_E --name workload-F -tid busybox
+    docker exec workload-A ping -c 4 192.168.1.6
