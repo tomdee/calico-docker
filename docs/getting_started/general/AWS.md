@@ -1,7 +1,7 @@
 # Running calico-docker on AWS
 Calico is designed to provide high performance massively scalable virtual networking for private data centers. But you can also run Calico within a public cloud such as Amazon Web Services (AWS).  The following instructions show how to network containers using Calico routing and the Calico security model on AWS.
 
-## Getting started
+## Getting started with AWS
 These instructions describe how to set up two CoreOS hosts on AWS.  For more general background, see [the CoreOS on AWS documentation](https://coreos.com/docs/running-coreos/cloud-providers/ec2/).
 
 Download and install AWS Command Line Interface: 
@@ -111,46 +111,43 @@ Run the following commands to SSH into each node and set up Calico:
 ssh -i mykey.pem core@<instance IP>
 
 # Download calicoctl and make it executable:
-wget https://github.com/Metaswitch/calico-docker/releases/download/v0.4.8/calicoctl
-chmod +x ./calicoctl
+If you want to test with Powerstrip, you'll need to stick with v0.4.8, pther wise use the latest release (currently v0.5.3)
+
+Powerstrip
+
+  mkdir -p /opt/bin
+  wget -O /opt/bin/calicoctl https://github.com/Metaswitch/calico-docker/releases/download/v0.4.8/calicoctl
+  chmod +x /opt/bin/calicoctl 
+
+Not using Powerstrip
+
+  mkdir -p /opt/bin
+  wget -O /opt/bin/calicoctl https://github.com/Metaswitch/calico-docker/releases/download/v0.5.3/calicoctl
+  chmod +x /opt/bin/calicoctl
 
 # Grab our private IP from the metadata service:
-export metadata_url="http://169.254.169.254/latest/meta-data"
-export private_ip=$(curl "$metadata_url/local-ipv4")
+
+  curl http://169.254.169.254/latest/meta-data/local-ipv4
 
 # Start the calico node service:
-sudo ./calicoctl node --ip=$private_ip
-```
+Substitite the private IP obtained above. Run this command on both hosts.
+
+  sudo calicoctl node --ip=<PRIVATE-IP>
+
 Then on either of the hosts, create the IP pool Calico will use for your containers:
-```
-./calicoctl pool add 192.168.0.0/16 --ipip --nat-outgoing
-```
 
-## Create a couple of containers and check connectivity
-On the first host, run:
-```
-export DOCKER_HOST=localhost:2377
-docker run -e CALICO_IP=192.168.1.1 -e CALICO_PROFILE=test --name container-1 -tid busybox
-```
-On the second host, run:
-```
-export DOCKER_HOST=localhost:2377
-docker run -e CALICO_IP=192.168.1.2 -e CALICO_PROFILE=test --name container-2 -tid busybox
-```
-Then, run the following on the second host to see the that two containers are able to ping each other:
-```
-docker exec container-2 ping -c 4 192.168.1.1
-```
-## Next steps
-Now, you may wish to follow the [getting started instructions for creating workloads](https://github.com/Metaswitch/calico-docker/blob/master/docs/GettingStarted.md#creating-networked-endpoints).
+  calicoctl pool add 192.168.0.0/16 --ipip --nat-outgoing
 
-## (Optional) Enabling traffic from the internet to containers
+# Running the demonstration
+You can now run through the standard Calico [demonstration](Demonstration.md)
+
+# (Optional) Enabling traffic from the internet to containers
 Services running on a Calico host's containers in AWS can be exposed to the internet.  Since the containers have IP addresses in the private IP range, traffic to the container must be routed using a NAT and an appropriate Calico security profile.
 
 Let's create a new security profile and look at the default rules.
 ```
-./calicoctl profile add WEB
-./calicoctl profile WEB rule show
+calicoctl profile add WEB
+calicoctl profile WEB rule show
 ```
 You should see the following output.
 ```
@@ -162,12 +159,12 @@ Outbound rules:
 
 Let's modify this profile to make it more appropriate for a public webserver by allowing TCP traffic on ports 80 and 443:
 ```
-./calicoctl profile WEB rule add inbound allow tcp to ports 80,443
+calicoctl profile WEB rule add inbound allow tcp to ports 80,443
 ```
 
 Now, we can list the rules again and see the changes:
 ```
-./calicoctl profile WEB rule show
+calicoctl profile WEB rule show
 ```
 should print
 ```
