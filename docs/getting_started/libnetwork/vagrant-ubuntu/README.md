@@ -44,11 +44,11 @@ At this point, it's worth checking that your servers can ping each other.
 
 From calico-1
 
-    ping 172.17.8.102
+    ping calico-02
 
 From calico-2
 
-    ping 172.17.8.101
+    ping calico-01
 
 If you see ping failures, the likely culprit is a problem with the VirtualBox network between the VMs.  You should check that each host is connected to the same virtual network adapter in VirtualBox and rebooting the host may also help.  Remember to shut down the VMs with `vagrant halt` before you reboot.
 
