@@ -1,7 +1,7 @@
-# Running calico-docker on GCE
+# Running Calico on GCE
 Calico is designed to provide high performance massively scalable virtual networking for private data centers. But you can also run Calico within a public cloud such as Google Compute Engine (GCE). The following instructions show how to network containers using Calico routing and the Calico security model on GCE.
 
-## Getting started
+## Getting started with GCE
 These instructions describe how to set up two CoreOS hosts on GCE.  For more general background, see [the CoreOS on GCE documentation](https://coreos.com/docs/running-coreos/cloud-providers/google-compute-engine/).
 
 Download and install GCE, then restart your terminal: 
@@ -35,44 +35,28 @@ gcloud compute firewall-rules list
 ```
 
 ## Spinning up the VMs
-etcd needs to be running on the Calico hosts.  The easiest way to bootstrap etcd is with a discovery URL.  We'll use a cluster size of 1 for this demo.  For an actual deployment, choose an etcd cluster size that is equal to or less than the number of Calico nodes (an odd number in the range 3-9 works well).  For more details on etcd clusters, see the [CoreOS Cluster Discovery Documentation](https://coreos.com/docs/cluster-management/setup/cluster-discovery/).
-Use `curl` to get a fresh discovery URL:
-```
-curl https://discovery.etcd.io/new?size=1
-```
-You need to grab a fresh URL each time you bootstrap a cluster.
+Create the VMs by passing in a cloud-init file. A different file is used for the two servers.
 
-Create a file `cloud-config.yaml` with the following contents; **replace `<discovery URL>` with the URL retrieved above**:
-```
-#cloud-config
-coreos:
-  update:
-    reboot-strategy: off
-  etcd2:
-    name: $private_ipv4
-    discovery: <discovery URL>
-    advertise-client-urls: http://$private_ipv4:2379
-    initial-advertise-peer-urls: http://$private_ipv4:2380
-    listen-client-urls: http://0.0.0.0:2379,http://0.0.0.0:4001
-    listen-peer-urls: http://$private_ipv4:2380,http://$private_ipv4:7001
-  units:
-    - name: etcd2.service
-      command: start
-
-```
-Note: we disable CoreOS updates for this demo to avoid interrupting the instructions.
-
-Then create the cluster with the following command, where calico-1 and calico-2 are the names for the two nodes to create:
 ```
 gcloud compute instances create \
-  calico-1 calico-2 \
+  calico-1 \
   --image-project coreos-cloud \
   --image coreos-alpha-709-0-0-v20150611 \
   --machine-type n1-standard-1 \
-  --metadata-from-file user-data=cloud-config.yaml
+  --metadata-from-file user-data=vagrant-coreos/user-data-first
 ```
 
-## Installing calicoctl on each node
+Create the second server
+```
+gcloud compute instances create \
+  calico-2 \
+  --image-project coreos-cloud \
+  --image coreos-alpha-709-0-0-v20150611 \
+  --machine-type n1-standard-1 \
+  --metadata-from-file user-data=vagrant-coreos/user-data-others
+```
+
+## Set up the IP Pool before running the demo
 SSH into each node using gcloud (names are calico-1 and calico-2):
 ```
 gcloud compute ssh <instance name>
@@ -80,10 +64,6 @@ gcloud compute ssh <instance name>
 
 On each node, run these commands to set up Calico:
 ```
-# Download calicoctl and make it executable:
-wget https://github.com/Metaswitch/calico-docker/releases/download/v0.4.8/calicoctl
-chmod +x ./calicoctl
-
 # Grab our private IP from the metadata service:
 export metadata_url="http://metadata.google.internal/computeMetadata/v1/"
 export private_ip=$(curl "$metadata_url/instance/network-interfaces/0/ip" -H "Metadata-Flavor: Google")
@@ -96,23 +76,8 @@ Then, on any one of the hosts, create the IP pool Calico will use for your conta
 ./calicoctl pool add 192.168.0.0/16 --ipip --nat-outgoing
 ```
 
-## Create a couple of containers and check connectivity
-On the first host, run:
-```
-export DOCKER_HOST=localhost:2377
-docker run -e CALICO_IP=192.168.1.1 -e CALICO_PROFILE=test --name container-1 -tid busybox
-```
-On the second host, run:
-```
-export DOCKER_HOST=localhost:2377
-docker run -e CALICO_IP=192.168.1.2 -e CALICO_PROFILE=test --name container-2 -tid busybox
-```
-Then, run the following on the second host to see the that two containers are able to ping each other:
-```
-docker exec container-2 ping -c 4 192.168.1.1
-```
-## Next steps
-Now, you may wish to follow the [getting started instructions for creating workloads](https://github.com/Metaswitch/calico-docker/blob/master/docs/GettingStarted.md#creating-networked-endpoints).
+# Running the demonstration
+You can now run through the standard Calico [demonstration](Demonstration.md)
 
 ## (Optional) Enabling traffic from the internet to containers
 Services running on a Calico host's containers in GCE can be exposed to the internet.  Since the containers have IP addresses in the private IP range, traffic to the container must be routed using a NAT and an appropriate Calico security profile.

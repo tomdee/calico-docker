@@ -10,9 +10,6 @@ num_instances=2
 # Change basename of the VM
 instance_name_prefix="calico"
 
-# The IP address of the first server
-primary_ip = "172.17.8.101"
-
 # Official CoreOS channel from which updates should be downloaded
 update_channel='alpha'
 

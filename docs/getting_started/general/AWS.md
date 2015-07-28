@@ -59,34 +59,11 @@ aws ec2 authorize-security-group-ingress \
 ```
 
 ## Spinning up the VMs
-etcd needs to be running on the Calico hosts.  The easiest way to bootstrap etcd is with a discovery URL.  We'll use a cluster size of 1 for this demo.  For an actual deployment, choose an etcd cluster size that is equal to or less than the number of Calico nodes (an odd number in the range 3-9 works well).  For more details on etcd clusters, see the [CoreOS Cluster Discovery Documentation](https://coreos.com/docs/cluster-management/setup/cluster-discovery/).
-Use `curl` to get a fresh discovery URL:
-```
-curl https://discovery.etcd.io/new?size=1
-```
-You need to grab a fresh URL each time you bootstrap a cluster.
+Create the 2 Calico Docker hosts by passing in a `cloud-config` file. A different file is used for the first server. 
 
-Create a file `cloud-config.yaml` with the following contents; **replace `<discovery URL>` with the URL retrieved above**:
-```
-#cloud-config
-coreos:
-  update:
-    reboot-strategy: off
-  etcd2:
-    name: $private_ipv4
-    discovery: <discovery URL>
-    advertise-client-urls: http://$private_ipv4:2379
-    initial-advertise-peer-urls: http://$private_ipv4:2380
-    listen-client-urls: http://0.0.0.0:2379,http://0.0.0.0:4001
-    listen-peer-urls: http://$private_ipv4:2380,http://$private_ipv4:7001
-  units:
-    - name: etcd2.service
-      command: start
+For the first server, use the file located in `vagrant-coreos/user-data-first`
+For the second server, use the file located in `vagrant-coreos/user-data-other`
 
-```
-Note: we disable CoreOS updates for this demo to avoid interrupting the instructions.
-
-Next, you will create the 2 Calico Docker hosts:
 ```
 aws ec2 run-instances \
   --count 2 \
@@ -94,43 +71,23 @@ aws ec2 run-instances \
   --instance-type t1.micro \
   --key-name mykey \
   --security-groups MySG \
-  --user-data file://cloud-config.yaml
+  --user-data file://<PATH_TO_CLOUD_CONFIG>
 ```
 The "ami-########" represents the CoreOS alpha image type.
 Note: it may take a couple of minutes for AWS to boot the machines after creating them.
 
-## Installing calicoctl on each node
-Get the public IP addresses of the new instances from the AWS Web Console or by running:
-```
-aws ec2 describe-instances --filter "Name=key-name,Values=mykey" | grep PublicIpAddress
-```
+## Set up the IP Pool before running the demo
+Run the following commands to SSH into each node and set up the IP pool
 
-Run the following commands to SSH into each node and set up Calico:
-```
-# SSH into a node with the mykey.pem and username core
-ssh -i mykey.pem core@<instance IP>
+SSH into a node with the mykey.pem and username core
+  
+  ssh -i mykey.pem core@<instance IP>
 
-# Download calicoctl and make it executable:
-If you want to test with Powerstrip, you'll need to stick with v0.4.8, otherwise use the latest release (currently v0.5.3)
-
-Powerstrip
-
-  mkdir -p /opt/bin
-  wget -O /opt/bin/calicoctl https://github.com/Metaswitch/calico-docker/releases/download/v0.4.8/calicoctl
-  chmod +x /opt/bin/calicoctl 
-
-Not using Powerstrip
-
-  mkdir -p /opt/bin
-  wget -O /opt/bin/calicoctl https://github.com/Metaswitch/calico-docker/releases/download/v0.5.3/calicoctl
-  chmod +x /opt/bin/calicoctl
-
-# Grab our private IP from the metadata service:
+Grab our private IP from the metadata service:
 
   curl http://169.254.169.254/latest/meta-data/local-ipv4
 
-# Start the calico node service:
-Substitite the private IP obtained above. Run this command on both hosts.
+Substitute the private IP obtained above. Run this command on both hosts.
 
   sudo calicoctl node --ip=<PRIVATE-IP>
 
@@ -175,17 +132,12 @@ Outbound rules:
    1 allow
 ```
 
-After creating the WEB profile, run the following command on one of your AWS Calico hosts to create a Calico container under this profile, running a basic NGINX http server:
-```
-docker run -e CALICO_IP=192.168.2.1 -e CALICO_PROFILE=WEB --name mynginx -P -d nginx
-```
-
-On the same host, create a NAT that forwards port 80 traffic to the new container.
+On the same host, create a NAT that forwards port 80 traffic to a new container.
 ```
 sudo iptables -A PREROUTING -t nat -i eth0 -p tcp --dport 80 -j DNAT --to 192.168.2.1:80
 ```
 
-Lastly, the AWS host's security group must be updated for any ports you want to expose.  Run this command from your aws CLI machine to allow incoming traffic to port 80:
+Lastly, the AWS host's security group must be updated for any ports you want to expose.  Run this command from your AWS CLI machine to allow incoming traffic to port 80:
 ```
 aws ec2 authorize-security-group-ingress \
   --group-name MySG \
@@ -194,7 +146,7 @@ aws ec2 authorize-security-group-ingress \
   --cidr 0.0.0.0/0
 ```
 
-You should now be able to access the NGINX http server using the public ip address of your AWS host on port 80 by visiting http://`<host public ip>`:80 or running:
+You should now be able to access the container using the public ip address of your AWS host on port 80 by visiting http://`<host public ip>`:80 or running:
 ```
 curl http://<host public ip>:80
 ```
