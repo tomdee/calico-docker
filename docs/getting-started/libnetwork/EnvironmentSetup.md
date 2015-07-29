@@ -3,10 +3,6 @@ The demonstration of the Calico libnetwork plugin is run on two Linux servers. A
 * An experimental version of Docker
 * consul for clustering Docker
 
-We've prepared a number of guides for creating such an environment, or if you know what you're doing, the steps are documented below.
-* [Vagrant install of Ubuntu](https://github.com/Metaswitch/calico-ubuntu-vagrant) 
-* [Vagrant install of CoreOS](https://github.com/Metaswitch/calico-coreos-vagrant-example)
-
 Once you have the environment set up, you can run through the [demonstration](Demonstration.md)
 
 # Manual Setup
