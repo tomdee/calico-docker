@@ -62,18 +62,9 @@ SSH into each node using gcloud (names are calico-1 and calico-2):
 gcloud compute ssh <instance name>
 ```
 
-On each node, run these commands to set up Calico:
+On any one of the hosts, create the IP pool Calico will use for your containers:
 ```
-# Grab our private IP from the metadata service:
-export metadata_url="http://metadata.google.internal/computeMetadata/v1/"
-export private_ip=$(curl "$metadata_url/instance/network-interfaces/0/ip" -H "Metadata-Flavor: Google")
-
-# Start the calico node service:
-sudo ./calicoctl node --ip=$private_ip
-```
-Then, on any one of the hosts, create the IP pool Calico will use for your containers:
-```
-./calicoctl pool add 192.168.0.0/16 --ipip --nat-outgoing
+calicoctl pool add 192.168.0.0/16 --ipip --nat-outgoing
 ```
 
 # Running the demonstration
@@ -84,8 +75,8 @@ Services running on a Calico host's containers in GCE can be exposed to the inte
 
 Let's create a new security profile and look at the default rules.
 ```
-./calicoctl profile add WEB
-./calicoctl profile WEB rule show
+calicoctl profile add WEB
+calicoctl profile WEB rule show
 ```
 You should see the following output.
 ```
@@ -97,12 +88,12 @@ Outbound rules:
 
 Let's modify this profile to make it more appropriate for a public webserver by allowing TCP traffic on ports 80 and 443:
 ```
-./calicoctl profile WEB rule add inbound allow tcp to ports 80,443
+calicoctl profile WEB rule add inbound allow tcp to ports 80,443
 ```
 
 Now, we can list the rules again and see the changes:
 ```
-./calicoctl profile WEB rule show
+calicoctl profile WEB rule show
 ```
 should print
 ```
@@ -111,11 +102,6 @@ Inbound rules:
    2 allow tcp to ports 80,443
 Outbound rules:
    1 allow
-```
-
-After creating the WEB profile, run the following command on one of your GCE Calico hosts to create a Calico container under this profile, running a basic NGINX http server:
-```
-docker run -e CALICO_IP=192.168.2.1 -e CALICO_PROFILE=WEB --name mynginx1 -P -d nginx
 ```
 
 On the same host, create a NAT that forwards port 80 traffic to the new container.
@@ -129,7 +115,7 @@ gcloud compute firewall-rules create allow-http \
   --description "Incoming http allowed." --allow tcp:80
 ```
 
-You should now be able to access the NGINX http server using the public ip address of your GCE host on port 80 by visiting http://<host public ip>:80 or running:
+You should now be able to access containers using the public ip address of your GCE host on port 80 by visiting http://<host public ip>:80 or running:
 ```
 curl http://<host public ip>:80
 ```
