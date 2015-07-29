@@ -3,13 +3,6 @@ The Powerstrip Calico demonstration is run on two Linux servers. The requirement
  
 Development of the Powerstrip version of Calico is lagging behind the master branch, so an older version of `calicoctl` and the `calico-node` docker image are required.
 
-As with the general instruction, we've prepared a number of guides for creating such an environment. If you don't use one of these then see below.
-* [Vagrant install of Ubuntu](https://github.com/Metaswitch/calico-ubuntu-vagrant) 
-* [Vagrant install of CoreOS](https://github.com/Metaswitch/calico-coreos-vagrant-example)
-* [CoreOS on AWS](../general/AWS.md)
-* [CoreOS on DigitalOcean](../general/DigitalOcean.md)
-* [CoreOS on Google Compute Engine](../general/GCE.md)
-
 Once you have the environment set up, you can run through the [demonstration](Demonstration.md)
 
 # Manual Setup
