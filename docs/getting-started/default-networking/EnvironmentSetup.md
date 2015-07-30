@@ -6,13 +6,6 @@ The servers also need
 * An Etcd cluster - which Calico uses for coordinating state between the nodes.
 * The `calicoctl` to be placed in the `$PATH`.
 
-We've prepared a number of guides for creating such an environment, or if you know what you're doing, the steps are documented below.
-* [Vagrant install of Ubuntu](https://github.com/Metaswitch/calico-ubuntu-vagrant) 
-* [Vagrant install of CoreOS](https://github.com/Metaswitch/calico-coreos-vagrant-example)
-* [CoreOS on AWS](AWS.md)
-* [CoreOS on DigitalOcean](DigitalOcean.md)
-* [CoreOS on Google Compute Engine](GCE.md)
-
 Once you have the environment set up, you can run through the [demonstration](Demonstration.md)
 
 # Manual Setup
