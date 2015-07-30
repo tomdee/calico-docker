@@ -80,11 +80,12 @@ A different file is used for the two servers.
 - For the first server, use the `user-data-first`
 - For the second server, use the `user-data-others`
 
+Copy these files onto your machine.
+
 For the first server run:
 
 ```
 aws ec2 run-instances \
-  --count 2 \
   --image-id ami-29734819 \
   --instance-type t1.micro \
   --key-name mykey \
@@ -94,11 +95,12 @@ aws ec2 run-instances \
 
 replacing <PATH_TO_CLOUD_CONFIG> with the appropriate directory containing the cloud config.
 
-For the second server run:
+Find the PrivateIpAddress value of the first server by checking the output of this command.  Open your `user-data-others` file and replace the instances of `calico-01` with this private IP address.
+
+Now, for the second server run:
 
 ```
 aws ec2 run-instances \
-  --count 2 \
   --image-id ami-29734819 \
   --instance-type t1.micro \
   --key-name mykey \
@@ -114,21 +116,16 @@ Notes:
 ## Set up the IP Pool before running the demo
 Run the following commands to SSH into each node and set up the IP pool
 
-SSH into a node with the mykey.pem and username core
-  
-    ssh -i mykey.pem core@<instance IP>
+SSH into a node with the mykey.pem and username core. The public IP addresses of your instances can be found on your AWS EC2 dashboard.
+```
+ssh -i mykey.pem core@<PUBLIC IP>
+```
 
-Grab our private IP from the metadata service:
+On any one of the hosts, create the IP pool Calico will use for your containers:
 
-    curl http://169.254.169.254/latest/meta-data/local-ipv4
-
-Substitute the private IP obtained above. Run this command on both hosts.
-
-    sudo calicoctl node --ip=<PRIVATE-IP>
-
-Then on either of the hosts, create the IP pool Calico will use for your containers:
-
-    calicoctl pool add 192.168.0.0/16 --ipip --nat-outgoing
+```
+calicoctl pool add 192.168.0.0/16 --ipip --nat-outgoing
+```
 
 # Running the demonstration
 You can now run through the standard Calico demonstration.  There are three demonstration options depending on 
