@@ -44,14 +44,9 @@ SSH into each Calico host you created using the IP addresses found in the Drople
 ssh core@<ip>
 ```
 
-On each node, run the calicoctl daemon.
-```
-sudo calicoctl node
-```
-
 Then, on any one of the hosts, create the IP pool Calico will use for your containers:
 ```
-./calicoctl pool add 192.168.0.0/16 --ipip --nat-outgoing
+calicoctl pool add 192.168.0.0/16 --ipip --nat-outgoing
 ```
 
 ## Running the demonstration
@@ -69,8 +64,8 @@ appropriate Calico security profile.
 
 Let's create a new security profile and look at the default rules.
 ```
-./calicoctl profile add WEB
-./calicoctl profile WEB rule show
+calicoctl profile add WEB
+calicoctl profile WEB rule show
 ```
 You should see the following output.
 ```
@@ -88,13 +83,13 @@ Let's modify this profile to make it more appropriate for a public webserver by 
 443:
 
 ```
-./calicoctl profile WEB rule add inbound allow tcp to ports 80,443
+calicoctl profile WEB rule add inbound allow tcp to ports 80,443
 ```
 
 Now, we can list the rules again and see the changes:
 
 ```
-./calicoctl profile WEB rule show
+calicoctl profile WEB rule show
 ```
 
 should print
