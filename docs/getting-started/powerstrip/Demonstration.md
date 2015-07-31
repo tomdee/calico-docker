@@ -10,17 +10,16 @@ If you have everything set up properly you should have `calicoctl` in your
 
 ## Starting Calico services<a id="calico-services"></a>
 
-Once you have your cluster up and running, start calico on all the nodes
+Once you have your cluster up and running, start calico on both nodes.
 
-On calico-01
+On both calico-01 and calico-02:
 
-    sudo calicoctl node
+    sudo calicoctl node --ip=`ip route get 8.8.8.8 | head -1 | cut -d' ' -f8`
 
-On calico-02
 
-    sudo calicoctl node
+This command starts a Calico container.  The `--ip` parameter here calls a command that gets the ip address of your host regardless of the Calico environment you have set up.
 
-This will start a container on each host. Check they are running
+After running the command on each host, check the containers are running:
 
     docker ps
 
