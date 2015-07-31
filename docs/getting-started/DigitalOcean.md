@@ -29,12 +29,12 @@ You should now see something similar to the following:
 
 Before selecting "Create Droplet", you will need to specify the User Data.  
 
-There are three demonstration options depending on whether you are running with libnetwork, powerstrip or the 
-default docker networking.  Select the appropriate User Data based on the demonstration option.
+There are three demonstration options depending on whether you are running with libnetwork, Powerstrip or the 
+default Docker networking.  Select the appropriate User Data based on the demonstration option.
 
-- [User Data for docker default networking](default-networking/cloud-config) 
+- [User Data for Docker default networking](default-networking/cloud-config) 
 - [User Data for libnetwork](libnetwork/cloud-config) 
-- [User Data for powerstrip](powerstrip/cloud-config)
+- [User Data for Powerstrip](powerstrip/cloud-config)
     
 
 For the first droplet `calico-01`, paste in the cloud config from
@@ -62,11 +62,11 @@ calicoctl pool add 192.168.0.0/16 --ipip --nat-outgoing
 
 ## Running the demonstration
 You can now run through the standard Calico demonstration.  There are three demonstration options depending on 
-whether you are running with libnetwork, powerstrip or the default docker networking.
+whether you are running with libnetwork, Powerstrip or the default Docker networking.
 
-- [demonstration with docker default networking](default-networking/Demonstration.md)
+- [demonstration with Docker default networking](default-networking/Demonstration.md)
 - [demonstration with libnetwork](libnetwork/Demonstration.md) 
-- [demonstration with powerstrip](powerstrip/Demonstration.md)
+- [demonstration with Powerstrip](powerstrip/Demonstration.md)
 
 ## (Optional) Enabling traffic from the internet to containers
 Services running on a Calico host's containers in DigitalOcean can be exposed to the internet.  Since the containers 

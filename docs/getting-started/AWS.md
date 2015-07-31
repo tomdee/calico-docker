@@ -69,12 +69,12 @@ aws ec2 authorize-security-group-ingress \
 ## Spinning up the VMs
 Create the 2 Calico Docker hosts by passing in a `cloud-config` file. 
 
-There are three demonstration options depending on whether you are running with libnetwork, powerstrip or the 
-default docker networking.  Select the appropriate cloud-config based on the demonstration option.
+There are three demonstration options depending on whether you are running with libnetwork, Powerstrip or the 
+default Docker networking.  Select the appropriate cloud-config based on the demonstration option.
 
-- [User Data for docker default networking](default-networking/cloud-config)
+- [User Data for Docker default networking](default-networking/cloud-config)
 - [User Data for libnetwork](libnetwork/cloud-config)
-- [User Data for powerstrip](powerstrip/cloud-config)
+- [User Data for Powerstrip](powerstrip/cloud-config)
   
 A different file is used for the two servers.    
 - For the first server, use the `user-data-first`
@@ -129,11 +129,11 @@ calicoctl pool add 192.168.0.0/16 --ipip --nat-outgoing
 
 # Running the demonstration
 You can now run through the standard Calico demonstration.  There are three demonstration options depending on 
-whether you are running with libnetwork, powerstrip or the default docker networking.
+whether you are running with libnetwork, Powerstrip or the default Docker networking.
 
-- [demonstration with docker default networking](default-networking/Demonstration.md)
+- [demonstration with Docker default networking](default-networking/Demonstration.md)
 - [demonstration with libnetwork](libnetwork/Demonstration.md) 
-- [demonstration with powerstrip](powerstrip/Demonstration.md)
+- [demonstration with Powerstrip](powerstrip/Demonstration.md)
 
 # (Optional) Enabling traffic from the internet to containers
 Services running on a Calico host's containers in AWS can be exposed to the internet.  Since the containers have IP 
@@ -163,10 +163,13 @@ calicoctl profile WEB rule add inbound allow tcp to ports 80,443
 ```
 
 Now, we can list the rules again and see the changes:
+
 ```
 calicoctl profile WEB rule show
 ```
+
 should print
+
 ```
 Inbound rules:
    1 allow from tag WEB 
@@ -176,12 +179,14 @@ Outbound rules:
 ```
 
 On the same host, create a NAT that forwards port 80 traffic to a new container.
+
 ```
 sudo iptables -A PREROUTING -t nat -i eth0 -p tcp --dport 80 -j DNAT --to 192.168.2.1:80
 ```
 
 Lastly, the AWS host's security group must be updated for any ports you want to expose.  Run this command from your 
 AWS CLI machine to allow incoming traffic to port 80:
+
 ```
 aws ec2 authorize-security-group-ingress \
   --group-name MySG \

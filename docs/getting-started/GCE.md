@@ -41,12 +41,12 @@ gcloud compute firewall-rules list
 ## Spinning up the VMs
 Create the VMs by passing in a cloud-init file.
 
-There are three demonstration options depending on whether you are running with libnetwork, powerstrip or the 
-default docker networking.  Select the appropriate cloud-config based on the demonstration option.
+There are three demonstration options depending on whether you are running with libnetwork, Powerstrip or the 
+default Docker networking.  Select the appropriate cloud-config based on the demonstration option.
 
-- [User Data for docker default networking](default-networking/cloud-config) 
+- [User Data for Docker default networking](default-networking/cloud-config) 
 - [User Data for libnetwork](libnetwork/cloud-config)  
-- [User Data for powerstrip](powerstrip/cloud-config)
+- [User Data for Powerstrip](powerstrip/cloud-config)
   
 A different file is used for the two servers.    
 - For the first server, use the `user-data-first`
@@ -87,11 +87,11 @@ calicoctl pool add 192.168.0.0/16 --ipip --nat-outgoing
 
 # Running the demonstration
 You can now run through the standard Calico demonstration.  There are three demonstration options depending on 
-whether you are running with libnetwork, powerstrip or the default docker networking.
+whether you are running with libnetwork, Powerstrip or the default Docker networking.
 
-- [demonstration with docker default networking](default-networking/Demonstration.md) 
+- [demonstration with Docker default networking](default-networking/Demonstration.md) 
 - [demonstration with libnetwork](libnetwork/Demonstration.md) 
-- [demonstration with powerstrip](powerstrip/Demonstration.md)
+- [demonstration with Powerstrip](powerstrip/Demonstration.md)
 
 ## (Optional) Enabling traffic from the internet to containers
 Services running on a Calico host's containers in GCE can be exposed to the internet.  Since the containers have IP 
@@ -134,13 +134,6 @@ Outbound rules:
    1 allow
 ```
 
-After creating the WEB profile, run the following command on one of your GCE Calico hosts to create a Calico container 
-under this profile, running a basic NGINX http server:
-
-```
-docker run -e CALICO_IP=192.168.2.1 -e CALICO_PROFILE=WEB --name mynginx1 -P -d nginx
-```
-
 On the same host, create a NAT that forwards port 80 traffic to the new container.
 
 ```
@@ -155,7 +148,7 @@ gcloud compute firewall-rules create allow-http \
   --description "Incoming http allowed." --allow tcp:80
 ```
 
-You should now be able to access the NGINX http server using the public ip address of your GCE host on port 80 by 
+You should now be able to access the container using the public ip address of your GCE host on port 80 by 
 visiting http://<host public ip>:80 or running:
 
 ```
