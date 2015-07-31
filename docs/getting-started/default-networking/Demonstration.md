@@ -1,14 +1,13 @@
-# Calico
+# Calico with Docker default networking
 
 ## Environment
-This demonstration makes some assumptions about the environment you have. See [EnvironmentSetup](EnvironmentSetup.md) for instructions on getting an appropriate environment.
+This demonstration makes some assumptions about the environment you have.
+See [Environment Setup](EnvironmentSetup.md) for instructions on getting an 
+appropriate environment.
 
-If you have everything set up properly you should have the following hosts and should have calicoctl in your $PATH.
+If you have everything set up properly you should have `calicoctl` in your 
+`$PATH`, and two hosts called `calico-01` and `calico-02`.
 
-| hostname  | IP address   |
-|-----------|--------------|
-| calico-01 | 172.17.8.101 |
-| calico-02 | 172.17.8.102 |
 
 ## Starting Calico services<a id="calico-services"></a>
 
@@ -34,7 +33,6 @@ You should see output like this on each node
 
 ## Networking containers.
 
-
 ### Starting containers
 Let's go ahead and start a few of containers on each host.
 
@@ -50,7 +48,8 @@ On calico-02
     docker run --net=none --name workload-E -tid busybox
 
 ### Adding Calico networking
-Now that docker is running the containers, we can use `calicoctl` to add networking to them.
+Now that docker is running the containers, we can use `calicoctl` to add 
+networking to them.
 
 On calico-01
 
@@ -63,8 +62,10 @@ On calico-02
     sudo calicoctl container add workload-D 192.168.0.4
     sudo calicoctl container add workload-E 192.168.0.5
     
-Once the containers have Calico networking added, they gain a new network interface the the assigned IP address.
-At this point, the containers have not been added to any policy profiles so they won't be able to communicate with any other containers.
+Once the containers have Calico networking added, they gain a new network 
+interface the the assigned IP address. At this point, the containers have not 
+been added to any policy profiles so they won't be able to communicate with 
+any other containers.
 
 Create some profiles (this can be done on either host)
 
@@ -72,7 +73,12 @@ Create some profiles (this can be done on either host)
     calicoctl profile add PROF_B
     calicoctl profile add PROF_D
 
-When each container is added to calico, an "endpoint" is registered for each container's interface. Containers are only allowed to communicate with one another when both of their endpoints are assigned the same profile. To assign a profile to an endpoint, we will first get the endpoint's ID with `calicoctl container <CONTAINER> endpoint-id show`, then paste it into the `calicoctl endpoint <ENDPOINT_ID> profile append [<PROFILES>]`  command.
+When each container is added to calico, an "endpoint" is registered for each 
+container's interface. Containers are only allowed to communicate with one 
+another when both of their endpoints are assigned the same profile. To assign 
+a profile to an endpoint, we will first get the endpoint's ID with 
+`calicoctl container <CONTAINER> endpoint-id show`, then paste it into the 
+`calicoctl endpoint <ENDPOINT_ID> profile append [<PROFILES>]`  command.
 
 On core-01:
 
@@ -86,12 +92,17 @@ On core-02:
     calicoctl endpoint $(calicoctl container workload-D endpoint-id show) profile append PROF_D
     calicoctl endpoint $(calicoctl container workload-E endpoint-id show) profile append PROF_A_C_E
 
-*Note that creating a new profile with `calicoctl profile add` will work on any Calico node, but assigning an endpoint a profile with `calicoctl endpoint <ENDPOINT_ID> profile append` will only work on the Calico node where the container is hosted.*
+*Note that whilst the `calicoctl endpoint commands` can be run on any Calico 
+ node, the `calicoctl container` commands will only work on the Calico node 
+ where the container is hosted.  Therefore the combined commands above must
+ be run on specific nodes.*
 
 
 ### Testing it
-By default, profiles are configured so that their members can communicate with one another, but workloads in other profiles cannot reach them.
-A, C and E are all in the same profile so should be able to ping each other.  B and D are in their own profile so shouldn't be able to ping anyone else.
+By default, profiles are configured so that their members can communicate with 
+one another, but workloads in other profiles cannot reach them. A, C and E are 
+all in the same profile so should be able to ping each other.  B and D are in 
+their own profile so shouldn't be able to ping anyone else.
     
 Now, check that A can ping C (192.168.0.3) and E (192.168.0.5):
 

@@ -1,5 +1,5 @@
 
-# Set up Calico on CoreOS using Vagrant
+# Set up Calico on Ubuntu using Vagrant
 
 These instructions allow you to set up an Ubuntu cluster ready to network Docker containers with 
 [Calico Docker networking][calico-networking] using Vagrant.
@@ -16,10 +16,10 @@ These instructions allow you to set up an Ubuntu cluster ready to network Docker
 
     git clone https://github.com/Metaswitch/calico-docker.git
     
-3) There are three demonstration options depending on whether you are running with libnetwork, powerstrip or the
-   default docker networking.  Select the required demonstration by cd-ing into the appropriate directory:
+3) There are three demonstration options depending on whether you are running with libnetwork, Powerstrip or the
+   default Docker networking.  Select the required demonstration by changing into the appropriate directory:
 
-  - For default docker networking
+  - For Docker default networking
   
     ```cd calico-docker/docs/getting-started/default-networking/vagrant-ubuntu```
     
@@ -27,7 +27,7 @@ These instructions allow you to set up an Ubuntu cluster ready to network Docker
   
     ```cd calico-docker/docs/getting-started/libnetwork/vagrant-ubuntu```
     
-  - For powerstrip
+  - For Powerstrip
   
     ```cd calico-docker/docs/getting-started/powerstrip/vagrant-ubuntu```
 
@@ -75,11 +75,11 @@ And finally check that Docker is running on both hosts by running
 Now you have a basic two node Ubuntu cluster setup and you are ready to try Calico neworking.
 
 You can now run through the standard Calico demonstration.  There are three demonstration options depending on 
-whether you are running with libnetwork, powerstrip or the default docker networking.
+whether you are running with libnetwork, Powerstrip or the default Docker networking.
 
-- [demonstration with docker default networking](default-networking/Demonstration.md)
+- [demonstration with Docker default networking](default-networking/Demonstration.md)
 - [demonstration with libnetwork](libnetwork/Demonstration.md)
-- [demonstration with powerstrip](powerstrip/Demonstration.md)
+- [demonstration with Powerstrip](powerstrip/Demonstration.md)
 
 [libnetwork]: https://github.com/docker/libnetwork
 [experimental-channel]: https://github.com/docker/docker/tree/master/experimental
@@ -87,3 +87,4 @@ whether you are running with libnetwork, powerstrip or the default docker networ
 [virtualbox]: https://www.virtualbox.org/
 [vagrant]: https://www.vagrantup.com/downloads.html
 [git]: http://git-scm.com/
+[calico-networking]: https://github.com/Metaswitch/calico-docker
