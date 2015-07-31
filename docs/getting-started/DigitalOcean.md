@@ -15,6 +15,8 @@ demo), and choose a region.  You should see something similar to the following:
 
 ![alt tag](digitalocean/Create_Droplet_1.png)
 
+You will be creating two droplets, call the first calico-01 and the second
+calico-02.
 
 Next, select CoreOS alpha version as the image type.  Note that some regions may not have this image as an option so 
 you may have to reselect a region that supports CoreOS alpha version. Check the Private Networking box and the User 
@@ -34,9 +36,18 @@ default docker networking.  Select the appropriate User Data based on the demons
 - [User Data for libnetwork](libnetwork/cloud-config) 
 - [User Data for powerstrip](powerstrip/cloud-config)
     
-From the appropriate cloud-config directory, paste in the config `user-data-first` for the first host.
 
-And repeat this process for a second host, but this time paste in the config from `user-data-other`.
+For the first droplet `calico-01`, paste in the cloud config from
+`user-data-first`.
+
+When the first droplet is running, look at the settings to get its private IPv4
+address.
+
+Repeat this process for a second host `calico-02`, but this time use the
+cloud config from `user-data-other`, making the following global changes before
+pasting it in:
+- Replace all instances of calico-01 with the private IPv4 address of calico-01
+
 
 ## Set up the IP Pool before running the demo
 SSH into each Calico host you created using the IP addresses found in the Droplets section of the Web Console:
