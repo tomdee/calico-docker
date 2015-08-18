@@ -1,8 +1,9 @@
-docopt==0.6.2
-docker-py==1.2.1
 sh==1.11
-prettytable==0.7.2
 netaddr==0.7.15
+six==1.9.0
+flask
+gunicorn
 subprocess32
 git+https://github.com/projectcalico/python-etcd.git
+git+https://github.com/projectcalico/calico.git@1.0.0
 git+https://github.com/projectcalico/libcalico.git@v0.1.2

@@ -20,7 +20,7 @@ CMD ["/sbin/my_init"]
 
 ENV HOME /root
 
-ADD calico_containers/requirements.txt /pycalico/
+ADD requirements.txt /pycalico/
 
 # Uncomment these lines and comment the section underneath to allow faster
 # rebuilds when making changes to the scripts.
