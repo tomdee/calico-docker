@@ -10,7 +10,7 @@ echo "http://alpine.gliderlabs.com/alpine/edge/testing" >> /etc/apk/repositories
 apk -U add runit python py-setuptools libffi ip6tables ipset iputils iproute2
 
 # These packages are only used for building and get removed.
-apk add --virtual temp python-dev libffi-dev py-pip alpine-sdk curl
+apk add --virtual temp python-dev libffi-dev py-pip musl-dev gcc curl git
 
 # Install Confd
 curl -L https://github.com/projectcalico/confd/releases/download/v0.10.0-scale/confd.static -o /sbin/confd
