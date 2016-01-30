@@ -1,0 +1,12 @@
+FROM alpine:latest
+MAINTAINER Tom Denham <tom@projectcalico.org>
+
+ADD https://github.com/projectcalico/confd/releases/download/v0.10.0-scale/confd.static /sbin/confd
+RUN chmod +x /sbin/confd
+
+COPY filesystem/etc/calico /etc/calico
+
+COPY confd_container/restart-calico-confd /usr/local/bin/
+COPY confd_container/start.sh /usr/local/bin/
+
+CMD ["start.sh"]

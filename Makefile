@@ -1,4 +1,4 @@
-.PHONEY: all binary node_image test_image test ut ut-circle st st-ssl clean run-etcd run-etcd-ssl create-dind help
+.PHONEY: all binary node_image test_image test ut ut-circle st st-ssl clean run-etcd run-etcd-ssl create-dind confd_image help
 
 # These variables can be overridden by setting an environment variable.
 LOCAL_IP_ENV?=$(shell ip route get 8.8.8.8 | head -1 | cut -d' ' -f8)
@@ -15,6 +15,8 @@ TEST_CONTAINER_FILES=$(shell find calico_test/ -type f ! -name '*.created')
 
 NODE_CONTAINER_DIR=calico_node
 NODE_CONTAINER_FILES=$(shell find calico_node/ -type f ! -name '*.created')
+
+CONFD_CONTAINER_FILES=$(shell find calico_node/ -type f ! -name '*.created')
 
 WHEEL_VERSION=0.0.0
 
@@ -40,6 +42,10 @@ calico_test/.calico_test.created: $(TEST_CONTAINER_FILES)
 calico_node/.calico_node.created: $(NODE_CONTAINER_FILES)
 	cd calico_node && docker build -t calico/node:latest .
 	touch calico_node/.calico_node.created
+
+calico_node/.calico_confd.created: $(CONFD_CONTAINER_FILES)
+	cd calico_node && docker build -f Dockerfile.confd -t calico/confd:latest .
+	touch calico_node/.calico_confd.created
 
 ## Generate the keys and certificates for running etcd with SSL.
 certs/.certificates.created:
