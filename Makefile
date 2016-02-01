@@ -45,7 +45,10 @@ calico_node/.calico_node.created: $(NODE_CONTAINER_FILES)
 
 calico_node/.calico_confd.created: $(CONFD_CONTAINER_FILES)
 	cd calico_node && docker build -f Dockerfile.confd -t calico/confd:latest .
+	docker save -o calico-confd.tar calico/confd
+	docker2aci --debug=true  --image=calico/confd calico-confd.tar
 	touch calico_node/.calico_confd.created
+
 
 ## Generate the keys and certificates for running etcd with SSL.
 certs/.certificates.created:
