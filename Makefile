@@ -47,6 +47,7 @@ calico_node/.calico_confd.created: $(CONFD_CONTAINER_FILES)
 	cd calico_node && docker build -f Dockerfile.confd -t calico/confd:latest .
 	docker save -o calico-confd.tar calico/confd
 	docker2aci --debug=true  --image=calico/confd calico-confd.tar
+	sudo rkt fetch --insecure-options=all calico-confd-latest.aci
 	touch calico_node/.calico_confd.created
 
 

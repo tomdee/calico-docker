@@ -1,2 +1,2 @@
 #!/bin/sh
-sv restart confd
+pkill confd
